@@ -1,7 +1,7 @@
 import asyncio
 
 from book.models import Borrowing
-from book.telegram_bot import notify_overdue_borrowing
+from book.telegram_bot import notify_overdue_borrowing, send_telegram_message
 
 from celery import shared_task
 

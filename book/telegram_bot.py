@@ -1,4 +1,4 @@
-from celery.utils.time import timezone
+from django.utils import timezone
 from django.conf import settings
 
 import requests
@@ -22,18 +22,19 @@ def notify_borrowing_created(instance):
 def notify_overdue_borrowing(instance):
     # Check if the borrowing is overdue
     today = timezone.now().date()
-    if instance.expected_return_date < today and not instance.actual_return_date:
-        # The borrowing is overdue
-        try:
-            book_title = instance.book.title
-        except ObjectDoesNotExist:
-            book_title = "Unknown book"
-        message = (
-            f"Overdue borrowing: {instance.user.username} "
-            f"should have returned {book_title} "
-            f"by {instance.expected_return_date}"
-        )
-        send_telegram_message(message)
+    for borrowing in instance:
+        if borrowing.expected_return_date < today and not borrowing.actual_return_date:
+            # The borrowing is overdue
+            try:
+                book_title = borrowing.book.title
+            except ObjectDoesNotExist:
+                book_title = "Unknown book"
+            message = (
+                f"Overdue borrowing: {borrowing.user.email} "
+                f"should have returned {book_title} "
+                f"by {borrowing.expected_return_date}"
+            )
+            send_telegram_message(message)
 
 
 def notify_successful_payment(instance):
