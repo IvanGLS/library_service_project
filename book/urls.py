@@ -4,8 +4,6 @@ from .views import (
     BookDetail,
     BorrowingList,
     BorrowingDetail,
-    PaymentList,
-    PaymentDetail,
 )
 
 urlpatterns = [
@@ -13,8 +11,6 @@ urlpatterns = [
     path("books/<int:pk>/", BookDetail.as_view(), name="book-detail"),
     path("borrowings/", BorrowingList.as_view(), name="borrowing-list"),
     path("borrowings/<int:pk>/", BorrowingDetail.as_view(), name="borrowing-detail"),
-    path("payments/", PaymentList.as_view(), name="payment-list"),
-    path("payments/<int:pk>/", PaymentDetail.as_view(), name="payment-detail"),
 ]
 
 

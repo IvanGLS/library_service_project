@@ -1,0 +1,104 @@
+[
+  {
+    "model": "book.book",
+    "pk": 1,
+    "fields": {
+      "title": "The Catcher in the Rye",
+      "author": "J.D. Salinger",
+      "cover": "HARD",
+      "inventory": 10,
+      "daily_fee": 1.99
+    }
+  },
+  {
+    "model": "book.book",
+    "pk": 2,
+    "fields": {
+      "title": "To Kill a Mockingbird",
+      "author": "Harper Lee",
+      "cover": "SOFT",
+      "inventory": 7,
+      "daily_fee": 2.99
+    }
+  },
+  {
+    "model": "book.book",
+    "pk": 3,
+    "fields": {
+      "title": "The Great Gatsby",
+      "author": "F. Scott Fitzgerald",
+      "cover": "HARD",
+      "inventory": 12,
+      "daily_fee": 2.49
+    }
+  },
+  {
+    "model": "book.borrowing",
+    "pk": 1,
+    "fields": {
+      "borrow_date": "2022-01-01",
+      "expected_return_date": "2022-01-10",
+      "actual_return_date": null,
+      "book": 1,
+      "user": 1
+    }
+  },
+  {
+    "model": "book.borrowing",
+    "pk": 2,
+    "fields": {
+      "borrow_date": "2022-02-01",
+      "expected_return_date": "2022-02-08",
+      "actual_return_date": "2022-02-09",
+      "book": 2,
+      "user": 2
+    }
+  },
+  {
+    "model": "book.borrowing",
+    "pk": 3,
+    "fields": {
+      "borrow_date": "2022-03-01",
+      "expected_return_date": "2022-03-12",
+      "actual_return_date": null,
+      "book": 3,
+      "user": 2
+    }
+  },
+  {
+    "model": "book.payment",
+    "pk": 1,
+    "fields": {
+      "borrowing": 1,
+      "status": "PAID",
+      "type": "PAYMENT",
+      "session_url": "https://example.com/payment/session/1",
+      "session_id": "session_123",
+      "money_to_pay": 10.0
+    }
+  },
+  {
+    "model": "book.payment",
+    "pk": 2,
+    "fields": {
+      "borrowing": 2,
+      "status": "PENDING",
+      "type": "FINE",
+      "session_url": "https://example.com/payment/session/2",
+      "session_id": "session_456",
+      "money_to_pay": 2.0
+    }
+  },
+  {
+    "model": "book.payment",
+    "pk": 3,
+    "fields": {
+      "borrowing": 3,
+      "status": "PENDING",
+      "type": "PAYMENT",
+      "session_url": "https://example.com/payment/session/3",
+      "session_id": "session_789",
+      "money_to_pay": 29.88
+    }
+  }
+]
