@@ -15,7 +15,9 @@ def send_telegram_message(message):
 
 
 def notify_borrowing_created(instance):
-    message = f"New borrowing created: {instance.user.username} borrowed {instance.book.title}"
+    message = (
+        f"New borrowing created: {instance.user.email} borrowed {instance.book.title}"
+    )
     return send_telegram_message(message)
 
 
