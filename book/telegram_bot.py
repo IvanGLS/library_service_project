@@ -40,5 +40,10 @@ def notify_overdue_borrowing(instance):
 
 
 def notify_successful_payment(instance):
-    message = f"Successful payment: {instance.borrowing.user.username} paid {instance.money_to_pay} for {instance.borrowing.book.title}"
+    message = (
+        f"Successful payment: "
+        f"{instance.borrowing.user.email} "
+        f"paid {instance.money_to_pay} "
+        f"for {instance.borrowing.book.title}"
+    )
     return send_telegram_message(message)

@@ -1,10 +1,13 @@
 from django.db.models import Q, QuerySet
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from httpx import Response
-from rest_framework import generics, status
+from rest_framework import generics
+from django.http import JsonResponse
+
 from .models import Book, Borrowing, Payment
-from .serializers import BookSerializer, BorrowingSerializer, PaymentSerializer
-from .telegram_bot import send_telegram_message, notify_borrowing_created
+from .serializers import BookSerializer, BorrowingSerializer
+from .strype_service import create_payment_session
+from .telegram_bot import notify_borrowing_created
 
 
 class BookList(generics.ListCreateAPIView):
@@ -67,3 +70,17 @@ class BorrowingList(generics.ListCreateAPIView):
 class BorrowingDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Borrowing.objects.all()
     serializer_class = BorrowingSerializer
+
+
+def initiate_payment(request, payment_id):
+    payment = Payment.objects.get(pk=payment_id)
+    session_id, session_url = create_payment_session(payment)
+    return JsonResponse({"session_id": session_id, "session_url": session_url})
+
+
+def payment_success(request):
+    return JsonResponse({"message": "Payment successful"})
+
+
+def payment_cancel(request):
+    return JsonResponse({"message": "Payment cancelled"})
