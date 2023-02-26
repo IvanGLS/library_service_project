@@ -46,6 +46,18 @@ class BorrowingSerializer(serializers.ModelSerializer):
         return data
 
 
+class BorrowingReturnSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Borrowing
+        fields = ("id", "actual_return_date", "book", "user")
+        read_only_fields = ("id", "book", "user")
+
+    actual_return_date = serializers.SerializerMethodField()
+
+    def get_actual_return_date(self, obj):
+        return obj.actual_return_date
+
+
 class PaymentSerializer(serializers.ModelSerializer):
     borrowing = BorrowingSerializer()
 
