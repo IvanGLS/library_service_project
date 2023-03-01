@@ -35,12 +35,6 @@ class Borrowing(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    def get_total_days(self):
-        if self.actual_return_date:
-            return (self.actual_return_date - self.borrow_date).days
-        else:
-            return (date.today() - self.borrow_date).days
-
     def __str__(self):
         return f" borrowing {self.user}, borrowing id {self.id}"
 

@@ -10,7 +10,7 @@ from .views import (
     initiate_payment,
     payment_success,
     payment_cancel,
-    payment_detail_view, CountView,
+    payment_detail_view,
 )
 
 urlpatterns = [
@@ -28,7 +28,6 @@ urlpatterns = [
     ),
     path("payments/", PaymentListView.as_view(), name="payments-list"),
     path("payments/<int:pk>/", payment_detail_view, name="payment-detail"),
-    path("paycount/", CountView.as_view(), name="count-payment"),
     path("success/", payment_success, name="payment_success"),
     path("cancel/", payment_cancel, name="payment_cancel"),
 ]

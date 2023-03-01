@@ -1,11 +1,11 @@
 import typing
 from datetime import date
 
-from rest_framework import serializers, status
-from rest_framework.generics import get_object_or_404
+from django.conf import settings
+from django.utils import timezone
+from rest_framework import serializers
 
 from .models import Book, Borrowing, Payment
-from .telegram_bot import notify_successful_payment
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -82,14 +82,11 @@ class BorrowingReturnSerializer(serializers.ModelSerializer):
         return obj.actual_return_date
 
 
-class CountSerializer(serializers.Serializer):
-    days = serializers.IntegerField(required=True)
-    book_id = serializers.IntegerField(required=True)
-
-
-class PaymentSerializer(serializers.ModelSerializer, CountSerializer):
+class PaymentSerializer(serializers.ModelSerializer):
     borrowing = serializers.PrimaryKeyRelatedField(queryset=Borrowing.objects.all())
     money_to_pay = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    status = serializers.ChoiceField(choices=Payment.STATUS_CHOICES, default=Payment.PENDING)
+    type = serializers.ChoiceField(choices=Payment.TYPE_CHOICES, default=Payment.PAYMENT_TYPE)
 
     class Meta:
         model = Payment
@@ -102,3 +99,19 @@ class PaymentSerializer(serializers.ModelSerializer, CountSerializer):
             "session_id",
             "money_to_pay",
         ]
+
+    def create(self, validated_data):
+        borrowing = validated_data["borrowing"]
+        book = borrowing.book
+        days_borrowed = (borrowing.expected_return_date - borrowing.borrow_date).days
+        if days_borrowed > 0 and borrowing.actual_return_date > borrowing.expected_return_date:
+            overdue_days = (borrowing.actual_return_date - borrowing.expected_return_date).days
+            money_to_pay = days_borrowed * book.daily_fee + overdue_days * settings.FINE_MULTIPLIER
+            validated_data["money_to_pay"] = money_to_pay
+
+        if days_borrowed > 0 and borrowing.actual_return_date == borrowing.expected_return_date:
+            money_to_pay = days_borrowed * book.daily_fee
+            validated_data["money_to_pay"] = money_to_pay
+
+        return super().create(validated_data)
+

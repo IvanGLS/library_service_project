@@ -15,7 +15,7 @@ from .serializers import (
     BookSerializer,
     BorrowingSerializer,
     BorrowingReturnSerializer,
-    PaymentSerializer, CountSerializer,
+    PaymentSerializer,
 )
 from .strype_service import create_payment_session
 from .telegram_bot import notify_borrowing_created
@@ -102,6 +102,7 @@ class BorrowingDetail(generics.RetrieveUpdateDestroyAPIView):
 class BorrowingReturn(generics.GenericAPIView):
     queryset = Borrowing.objects.all()
     serializer_class = BorrowingReturnSerializer
+    payment_serializer_class = PaymentSerializer
 
     @transaction.atomic
     def put(self, request, *args, **kwargs):
@@ -110,31 +111,29 @@ class BorrowingReturn(generics.GenericAPIView):
         borrowing.book.inventory += 1
         borrowing.book.save()
         borrowing.save()
+
+        # Create payment for the returned borrowing
+        payment_data = {
+            "borrowing": borrowing.id,
+            "status": "Pending",
+            "type": "Fine" if borrowing.actual_return_date > borrowing.expected_return_date else "Payment",
+            "session_url": "https://example.com/payment",
+            "session_id": "abc12"
+        }
+        # create payment with session url and id
+        serializer = PaymentSerializer(data=payment_data)
+        serializer.is_valid(raise_exception=True)
+        payment = serializer.save()
+
+        payment.save()
+
         serializer = self.get_serializer(borrowing)
-        return HttpResponse(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class PaymentListView(generics.ListCreateAPIView):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
-
-
-class CountView(generics.GenericAPIView):
-    queryset = Book
-    serializer_class = CountSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # Get book instance
-        book = get_object_or_404(Book, id=serializer.validated_data['book_id'])
-
-        # Calculate price to pay
-        money_to_pay = serializer.validated_data['days'] * book.daily_fee
-
-        # Return response
-        return Response({'money_to_pay': money_to_pay})
 
 
 class PaymentDetailView(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
