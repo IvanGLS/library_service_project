@@ -1,7 +1,11 @@
+import typing
 from datetime import date
 
-from rest_framework import serializers
+from rest_framework import serializers, status
+from rest_framework.generics import get_object_or_404
+
 from .models import Book, Borrowing, Payment
+from .telegram_bot import notify_successful_payment
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -30,10 +34,30 @@ class BookSerializer(serializers.ModelSerializer):
 
 class BorrowingSerializer(serializers.ModelSerializer):
     book = serializers.PrimaryKeyRelatedField(queryset=Book.objects.all())
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = Borrowing
-        fields = "__all__"
+        fields = [
+            "id",
+            "book",
+            "borrow_date",
+            "expected_return_date",
+            "actual_return_date",
+            "user",
+            "user_id",
+        ]
+        read_only_fields = ["user"]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if (
+            self.context["request"].method == "GET"
+            and not self.context["request"].user.is_superuser
+        ):
+            data.pop("user_id", None)
+        return data
 
     def validate(self, data):
         borrowing_count = Borrowing.objects.filter(
@@ -58,9 +82,23 @@ class BorrowingReturnSerializer(serializers.ModelSerializer):
         return obj.actual_return_date
 
 
-class PaymentSerializer(serializers.ModelSerializer):
-    borrowing = BorrowingSerializer()
+class CountSerializer(serializers.Serializer):
+    days = serializers.IntegerField(required=True)
+    book_id = serializers.IntegerField(required=True)
+
+
+class PaymentSerializer(serializers.ModelSerializer, CountSerializer):
+    borrowing = serializers.PrimaryKeyRelatedField(queryset=Borrowing.objects.all())
+    money_to_pay = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Payment
-        fields = "__all__"
+        fields = [
+            "id",
+            "borrowing",
+            "status",
+            "type",
+            "session_url",
+            "session_id",
+            "money_to_pay",
+        ]

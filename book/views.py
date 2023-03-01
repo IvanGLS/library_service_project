@@ -3,15 +3,19 @@ from django.db.models import Q, QuerySet
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from httpx import Response
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions, viewsets, mixins
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import SAFE_METHODS, IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Book, Borrowing, Payment
 from .serializers import (
     BookSerializer,
     BorrowingSerializer,
-    PaymentSerializer,
     BorrowingReturnSerializer,
+    PaymentSerializer, CountSerializer,
 )
 from .strype_service import create_payment_session
 from .telegram_bot import notify_borrowing_created
@@ -20,13 +24,19 @@ from .telegram_bot import notify_borrowing_created
 class BookList(generics.ListCreateAPIView):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-    def get_queryset(self) -> QuerySet:
+    def get_queryset(self):
         queryset = Book.objects.all()
         title = self.request.query_params.get("title")
         if title is not None:
             queryset = queryset.filter(title__icontains=title)
         return queryset
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [permissions.AllowAny()]
+        return [IsAdminUser()]
 
     @extend_schema(
         parameters=[
@@ -38,24 +48,34 @@ class BookList(generics.ListCreateAPIView):
             ),
         ]
     )
-    def get(self, request, *args, **kwargs) -> Response:
-        """List of books with filter by title"""
-        return super().get(request, *args, **kwargs)
+    def get(self, request, *args, **kwargs):
+        """
+        List of books with filter by title
+        """
+        return self.list(request, *args, **kwargs)
 
 
 class BookDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
 class BorrowingList(generics.ListCreateAPIView):
     queryset = Borrowing.objects.all().select_related("book")
     serializer_class = BorrowingSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self) -> QuerySet:
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().filter(user=self.request.user)
         user_id = self.request.query_params.get("user_id")
         is_active = self.request.query_params.get("is_active")
+
+        if self.request.user.is_superuser:
+            queryset = super().get_queryset().all()
+            # If user_id is specified and the user is not a superuser, ignore the filter
+            if user_id and not self.request.user.is_superuser:
+                user_id = None
 
         if user_id:
             queryset = queryset.filter(user_id=user_id)
@@ -74,11 +94,6 @@ class BorrowingList(generics.ListCreateAPIView):
         notify_borrowing_created(borrowing)
 
 
-class PaymentList(generics.ListCreateAPIView):
-    queryset = Payment.objects.all()
-    serializer_class = PaymentSerializer
-
-
 class BorrowingDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Borrowing.objects.all()
     serializer_class = BorrowingSerializer
@@ -89,15 +104,53 @@ class BorrowingReturn(generics.GenericAPIView):
     serializer_class = BorrowingReturnSerializer
 
     @transaction.atomic
-    def put(self, request, pk, *args, **kwargs):
+    def put(self, request, *args, **kwargs):
         borrowing = self.get_object()
         borrowing.actual_return_date = timezone.now().date()
         borrowing.book.inventory += 1
         borrowing.book.save()
         borrowing.save()
-
         serializer = self.get_serializer(borrowing)
-        return HttpResponse(serializer.data, status=200)
+        return HttpResponse(serializer.data, status=status.HTTP_200_OK)
+
+
+class PaymentListView(generics.ListCreateAPIView):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+
+
+class CountView(generics.GenericAPIView):
+    queryset = Book
+    serializer_class = CountSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Get book instance
+        book = get_object_or_404(Book, id=serializer.validated_data['book_id'])
+
+        # Calculate price to pay
+        money_to_pay = serializer.validated_data['days'] * book.daily_fee
+
+        # Return response
+        return Response({'money_to_pay': money_to_pay})
+
+
+class PaymentDetailView(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Get payments only for the authenticated user, or all payments for superuser
+        if self.request.user.is_superuser:
+            return Payment.objects.all()
+        else:
+            return Payment.objects.filter(borrowing__user=self.request.user)
+
+
+payment_detail_view = PaymentDetailView.as_view({"get": "retrieve"})
 
 
 def initiate_payment(request, payment_id: int) -> JsonResponse:

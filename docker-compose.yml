@@ -56,14 +56,14 @@ services:
     env_file:
       - .env
 
-#  flower:
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#    command: "celery -A rick_and_morty_api flower --address=0.0.0.0"
-#    ports:
-#      - "5555:5555"
-#    depends_on:
-#      - celery
-#    env_file:
-#      - .env
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: "celery -A rick_and_morty_api flower --address=0.0.0.0"
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery
+    env_file:
+      - .env

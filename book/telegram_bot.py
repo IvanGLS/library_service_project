@@ -22,21 +22,27 @@ def notify_borrowing_created(instance):
 
 
 def notify_overdue_borrowing(instance):
-    # Check if the borrowing is overdue
     today = timezone.now().date()
+    overdue_borrowings = []
     for borrowing in instance:
         if borrowing.expected_return_date < today and not borrowing.actual_return_date:
-            # The borrowing is overdue
+            overdue_borrowings.append(borrowing)
+
+    if overdue_borrowings:
+        message = "Overdue borrowings: "
+        for borrowing in overdue_borrowings:
             try:
                 book_title = borrowing.book.title
             except ObjectDoesNotExist:
                 book_title = "Unknown book"
-            message = (
-                f"Overdue borrowing: {borrowing.user.email} "
+            message += (
+                f"{borrowing.user.email} "
                 f"should have returned {book_title} "
                 f"by {borrowing.expected_return_date}"
             )
-            send_telegram_message(message)
+        send_telegram_message(message)
+    else:
+        send_telegram_message("No borrowings overdue today!")
 
 
 def notify_successful_payment(instance):
