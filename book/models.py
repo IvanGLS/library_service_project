@@ -1,10 +1,5 @@
 from django.db import models
 from enum import Enum
-
-from django.utils import timezone
-from django.utils.datetime_safe import date
-
-from book.telegram_bot import notify_successful_payment
 from customer.models import User
 
 
@@ -42,22 +37,26 @@ class Borrowing(models.Model):
 class Payment(models.Model):
     PENDING = "PENDING"
     PAID = "PAID"
+    CANCELED = "CANCELED"
+    EXPIRED = "EXPIRED"
     PAYMENT_TYPE = "PAYMENT"
     FINE_TYPE = "FINE"
     STATUS_CHOICES = [
+        (CANCELED, "Canceled"),
         (PENDING, "Pending"),
         (PAID, "Paid"),
+        (EXPIRED, "Expired"),
     ]
     TYPE_CHOICES = [
         (PAYMENT_TYPE, "Payment"),
         (FINE_TYPE, "Fine"),
     ]
     borrowing = models.ForeignKey(Borrowing, on_delete=models.CASCADE)
-    status = models.CharField(max_length=7, choices=STATUS_CHOICES, default=PENDING)
-    type = models.CharField(max_length=7, choices=TYPE_CHOICES, default=PAYMENT_TYPE)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default=PENDING)
+    type = models.CharField(max_length=8, choices=TYPE_CHOICES, default=PAYMENT_TYPE)
     session_url = models.URLField()
     session_id = models.CharField(max_length=50)
-    money_to_pay = models.DecimalField(max_digits=10, decimal_places=2)
+    money_to_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"Payment {self.id} ({self.borrowing.book.title})"

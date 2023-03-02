@@ -1,8 +1,11 @@
 import stripe
 from django.conf import settings
+from django.http import JsonResponse
+
+from book.models import Payment
 
 
-def create_payment_session(payment):
+def create_payment_session(payment: Payment) -> JsonResponse:
     stripe.api_key = settings.STRIPE_SECRET_KEY
 
     session = stripe.checkout.Session.create(
@@ -11,7 +14,7 @@ def create_payment_session(payment):
             {
                 "price_data": {
                     "currency": "usd",
-                    "unit_amount": int(payment.money_to_pay * 100),
+                    "unit_amount": (payment.money_to_pay * 100),
                     "product_data": {
                         "name": payment.borrowing.book.title,
                         "description": "Book borrowing fee",
@@ -28,4 +31,4 @@ def create_payment_session(payment):
     payment.session_id = session.id
     payment.session_url = session.url
     payment.save()
-    return session.id, session.url
+    return JsonResponse({"session_id": session.id, "session_url": session.url})

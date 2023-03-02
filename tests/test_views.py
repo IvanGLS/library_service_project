@@ -8,7 +8,6 @@ from rest_framework.test import APIClient, APITestCase
 from book.models import Book, Borrowing, CoverType
 from book.serializers import (
     BookSerializer,
-    BorrowingSerializer,
 )
 from customer.models import User
 
@@ -323,7 +322,8 @@ class BorrowingReturnTestAPI(TestCase):
 
     def test_successful_return(self):
         url = reverse("book:borrowing-return", kwargs={"pk": self.borrowing.id})
-        response = self.client.put(url)
+        response = self.client.get(url)
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.borrowing.refresh_from_db()
         self.assertIsNotNone(self.borrowing.actual_return_date)
@@ -331,12 +331,12 @@ class BorrowingReturnTestAPI(TestCase):
 
     def test_return_with_invalid_pk(self):
         url = reverse("book:borrowing-return", kwargs={"pk": 9999})
-        response = self.client.put(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_return_twice(self):
         self.borrowing.actual_return_date = timezone.now().date()
         self.borrowing.save()
         url = reverse("book:borrowing-return", kwargs={"pk": self.borrowing.id})
-        response = self.client.put(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

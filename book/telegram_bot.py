@@ -1,11 +1,15 @@
+from typing import List
+
 from django.utils import timezone
 from django.conf import settings
 
 import requests
 from django.core.exceptions import ObjectDoesNotExist
 
+from book.models import Payment, Borrowing
 
-def send_telegram_message(message):
+
+def send_telegram_message(message: str) -> dict:
     url = (
         f""
         f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
@@ -14,14 +18,14 @@ def send_telegram_message(message):
     return requests.get(url).json()  # this sends the message
 
 
-def notify_borrowing_created(instance):
+def notify_borrowing_created(instance: Borrowing) -> dict:
     message = (
         f"New borrowing created: {instance.user.email} borrowed {instance.book.title}"
     )
     return send_telegram_message(message)
 
 
-def notify_overdue_borrowing(instance):
+def notify_overdue_borrowing(instance: List[Borrowing]) -> dict:
     today = timezone.now().date()
     overdue_borrowings = []
     for borrowing in instance:
@@ -40,12 +44,12 @@ def notify_overdue_borrowing(instance):
                 f"should have returned {book_title} "
                 f"by {borrowing.expected_return_date}"
             )
-        send_telegram_message(message)
+        return send_telegram_message(message)
     else:
-        send_telegram_message("No borrowings overdue today!")
+        return send_telegram_message("No borrowings overdue today!")
 
 
-def notify_successful_payment(instance):
+def notify_successful_payment(instance: Payment) -> dict:
     message = (
         f"Successful payment: "
         f"{instance.borrowing.user.email} "

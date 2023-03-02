@@ -1,15 +1,13 @@
-import typing
 from datetime import date
-
-from django.conf import settings
-from django.utils import timezone
+from typing import List, Dict
 from rest_framework import serializers
 
 from .models import Book, Borrowing, Payment
+from .telegram_bot import notify_successful_payment
 
 
 class BookSerializer(serializers.ModelSerializer):
-    inventory = serializers.SerializerMethodField(read_only=True)
+    inventory: int = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Book
@@ -22,24 +20,26 @@ class BookSerializer(serializers.ModelSerializer):
             "daily_fee",
         )
 
-    def validate(self, data):
+    def validate(self, data: Dict) -> Dict:
         if Book.objects.count() >= 1000:
             raise serializers.ValidationError("Maximum number of books reached.")
         return data
 
-    def get_inventory(self, obj):
-        borrowings_count = Borrowing.objects.filter(actual_return_date=None).count()
+    def get_inventory(self, obj: Book) -> int:
+        borrowings_count: int = Borrowing.objects.filter(
+            actual_return_date=None
+        ).count()
         return Book.objects.count() - borrowings_count
 
 
 class BorrowingSerializer(serializers.ModelSerializer):
-    book = serializers.PrimaryKeyRelatedField(queryset=Book.objects.all())
-    user_id = serializers.IntegerField(source="user.id", read_only=True)
-    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    book: int = serializers.PrimaryKeyRelatedField(queryset=Book.objects.all())
+    user_id: int = serializers.IntegerField(source="user.id", read_only=True)
+    user: int = serializers.HiddenField(default=serializers.CurrentUserDefault())
 
     class Meta:
         model = Borrowing
-        fields = [
+        fields: List[str] = [
             "id",
             "book",
             "borrow_date",
@@ -48,10 +48,10 @@ class BorrowingSerializer(serializers.ModelSerializer):
             "user",
             "user_id",
         ]
-        read_only_fields = ["user"]
+        read_only_fields: List[str] = ["user"]
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
+    def to_representation(self, instance: Borrowing) -> Dict:
+        data: Dict = super().to_representation(instance)
         if (
             self.context["request"].method == "GET"
             and not self.context["request"].user.is_superuser
@@ -59,8 +59,8 @@ class BorrowingSerializer(serializers.ModelSerializer):
             data.pop("user_id", None)
         return data
 
-    def validate(self, data):
-        borrowing_count = Borrowing.objects.filter(
+    def validate(self, data: Dict) -> Dict:
+        borrowing_count: int = Borrowing.objects.filter(
             borrow_date__year=date.today().year
         ).count()
         if borrowing_count >= 50000:
@@ -73,24 +73,33 @@ class BorrowingSerializer(serializers.ModelSerializer):
 class BorrowingReturnSerializer(serializers.ModelSerializer):
     class Meta:
         model = Borrowing
-        fields = ("id", "actual_return_date", "book", "user")
-        read_only_fields = ("id", "book", "user")
+        fields: List[str] = ("id", "actual_return_date", "book", "user")
+        read_only_fields: List[str] = ("id", "book", "user")
 
     actual_return_date = serializers.SerializerMethodField()
 
-    def get_actual_return_date(self, obj):
+    def get_actual_return_date(self, obj: Borrowing) -> date:
         return obj.actual_return_date
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    borrowing = serializers.PrimaryKeyRelatedField(queryset=Borrowing.objects.all())
-    money_to_pay = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    status = serializers.ChoiceField(choices=Payment.STATUS_CHOICES, default=Payment.PENDING)
-    type = serializers.ChoiceField(choices=Payment.TYPE_CHOICES, default=Payment.PAYMENT_TYPE)
+    borrowing: int = serializers.PrimaryKeyRelatedField(queryset=Borrowing.objects.all())
+    money_to_pay: float = serializers.DecimalField(max_digits=10, decimal_places=2)
+    status: str = serializers.ChoiceField(
+        choices=Payment.STATUS_CHOICES, default=Payment.PENDING
+    )
+    type: str = serializers.ChoiceField(
+        choices=Payment.TYPE_CHOICES, default=Payment.PAYMENT_TYPE
+    )
+
+    def update(self, instance: Payment, validated_data: Dict) -> Payment:
+        if validated_data["status"] == Payment.PAID:
+            notify_successful_payment(validated_data)
+        return super().update(instance, validated_data)
 
     class Meta:
         model = Payment
-        fields = [
+        fields: List[str] = [
             "id",
             "borrowing",
             "status",
@@ -99,19 +108,3 @@ class PaymentSerializer(serializers.ModelSerializer):
             "session_id",
             "money_to_pay",
         ]
-
-    def create(self, validated_data):
-        borrowing = validated_data["borrowing"]
-        book = borrowing.book
-        days_borrowed = (borrowing.expected_return_date - borrowing.borrow_date).days
-        if days_borrowed > 0 and borrowing.actual_return_date > borrowing.expected_return_date:
-            overdue_days = (borrowing.actual_return_date - borrowing.expected_return_date).days
-            money_to_pay = days_borrowed * book.daily_fee + overdue_days * settings.FINE_MULTIPLIER
-            validated_data["money_to_pay"] = money_to_pay
-
-        if days_borrowed > 0 and borrowing.actual_return_date == borrowing.expected_return_date:
-            money_to_pay = days_borrowed * book.daily_fee
-            validated_data["money_to_pay"] = money_to_pay
-
-        return super().create(validated_data)
-
