@@ -60,7 +60,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: "celery -A rick_and_morty_api flower --address=0.0.0.0"
+    command: "celery -A library_service_api flower --address=0.0.0.0"
     ports:
       - "5555:5555"
     depends_on:

@@ -7,7 +7,6 @@ from .telegram_bot import notify_successful_payment
 
 
 class BookSerializer(serializers.ModelSerializer):
-    inventory: int = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Book
@@ -24,12 +23,6 @@ class BookSerializer(serializers.ModelSerializer):
         if Book.objects.count() >= 1000:
             raise serializers.ValidationError("Maximum number of books reached.")
         return data
-
-    def get_inventory(self, obj: Book) -> int:
-        borrowings_count: int = Borrowing.objects.filter(
-            actual_return_date=None
-        ).count()
-        return Book.objects.count() - borrowings_count
 
 
 class BorrowingSerializer(serializers.ModelSerializer):

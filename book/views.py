@@ -1,5 +1,7 @@
+import decimal
 from typing import List
 
+import stripe
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q, QuerySet
@@ -7,7 +9,6 @@ from django.http import JsonResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import generics, status, permissions, viewsets, mixins
-from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
@@ -19,7 +20,7 @@ from .serializers import (
     PaymentSerializer,
 )
 from .strype_service import create_payment_session
-from .telegram_bot import notify_borrowing_created
+from .telegram_bot import notify_borrowing_created, notify_successful_payment
 
 
 class BookList(generics.ListCreateAPIView):
@@ -68,6 +69,18 @@ class BorrowingList(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs) -> Response:
+        book_id = request.data.get("book")
+        book = Book.objects.get(id=book_id)
+        if book.inventory == 0:
+            return Response(
+                {"error": "The selected book is not available for borrowing."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Decrement the book's inventory by 1
+        book.inventory -= 1
+        book.save()
+
         # Check if the user has any pending payments
         if Payment.objects.filter(
             borrowing__user=request.user, status=Payment.PENDING
@@ -140,19 +153,20 @@ class BorrowingReturn(generics.GenericAPIView):
             "type": "FINE"
             if borrowing.actual_return_date > borrowing.expected_return_date
             else "PAYMENT",
-            "session_url": "https://example.com/payment",
-            "session_id": "abc12",
             "money_to_pay": self.payment_count(),
         }
         # create payment with session url and id
         serializer = PaymentSerializer(data=payment_data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        payment = serializer.save()
+
+        # Initiate payment session with Stripe
+        initiate_payment(request, payment.id)
 
         serializer = self.get_serializer(borrowing)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def payment_count(self) -> float:
+    def payment_count(self) -> decimal:
         borrowing = self.get_object()
         book = borrowing.book
         actual_date = borrowing.actual_return_date
@@ -204,6 +218,9 @@ payment_detail_view = PaymentDetailView.as_view({"get": "retrieve"})
 def initiate_payment(request, payment_id: int) -> JsonResponse:
     payment: Payment = Payment.objects.get(pk=payment_id)
     session_id, session_url = create_payment_session(payment)
+    payment.session_id = session_id
+    payment.session_url = session_url
+    payment.save()
     return JsonResponse({"session_id": session_id, "session_url": session_url})
 
 
@@ -211,27 +228,42 @@ def payment_success(request) -> JsonResponse:
     session_id = request.GET.get("session_id")
     payment = Payment.objects.get(session_id=session_id)
 
-    payment.status = Payment.PAID
-    payment.save()
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
-    return JsonResponse({"message": "Payment successful"})
+    # Retrieve the Stripe Checkout Session
+    session = stripe.checkout.Session.retrieve(payment.session_id)
+
+    # Check if the payment is successful
+    if session.payment_status == "paid":
+        payment.status = Payment.PAID
+        payment.save()
+
+        # Send payment data via Telegram
+        notify_successful_payment(payment)
+
+        return JsonResponse({"message": "Payment successful"})
+
+    else:
+        payment.status = session.payment_status
+        payment.save()
 
 
 def payment_cancel(request) -> JsonResponse:
     session_id = request.GET.get("session_id")
     payment = Payment.objects.get(session_id=session_id)
 
-    payment.status = Payment.CANCELED
-    payment.save()
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
-    return JsonResponse({"message": "Payment cancelled"})
+    # Retrieve the Stripe Checkout Session
+    session = stripe.checkout.Session.retrieve(payment.session_id)
 
+    # Check if the payment is canceled
+    if session.payment_status == "canceled":
+        payment.status = Payment.CANCELED
+        payment.save()
 
-def payment_expired(request) -> JsonResponse:
-    session_id = request.GET.get("session_id")
-    payment = Payment.objects.get(session_id=session_id)
+        return JsonResponse({"message": "Payment cancelled"})
 
-    payment.status = Payment.EXPIRED
-    payment.save()
-
-    return JsonResponse({"message": "Payment cancelled"})
+    else:
+        payment.status = session.payment_status
+        payment.save()

@@ -11,7 +11,6 @@ from .views import (
     payment_success,
     payment_cancel,
     payment_detail_view,
-    payment_expired,
 )
 
 urlpatterns = [
@@ -31,7 +30,6 @@ urlpatterns = [
     path("payments/<int:pk>/", payment_detail_view, name="payment-detail"),
     path("success/", payment_success, name="payment_success"),
     path("cancel/", payment_cancel, name="payment_cancel"),
-    path("expired/", payment_expired, name="payment_expired"),
 ]
 
 
