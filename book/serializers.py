@@ -7,7 +7,6 @@ from .telegram_bot import notify_successful_payment
 
 
 class BookSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Book
         fields = (
@@ -76,7 +75,9 @@ class BorrowingReturnSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    borrowing: int = serializers.PrimaryKeyRelatedField(queryset=Borrowing.objects.all())
+    borrowing: int = serializers.PrimaryKeyRelatedField(
+        queryset=Borrowing.objects.all()
+    )
     money_to_pay: float = serializers.DecimalField(max_digits=10, decimal_places=2)
     status: str = serializers.ChoiceField(
         choices=Payment.STATUS_CHOICES, default=Payment.PENDING
@@ -84,11 +85,6 @@ class PaymentSerializer(serializers.ModelSerializer):
     type: str = serializers.ChoiceField(
         choices=Payment.TYPE_CHOICES, default=Payment.PAYMENT_TYPE
     )
-
-    def update(self, instance: Payment, validated_data: Dict) -> Payment:
-        if validated_data["status"] == Payment.PAID:
-            notify_successful_payment(validated_data)
-        return super().update(instance, validated_data)
 
     class Meta:
         model = Payment

@@ -137,6 +137,7 @@ class BorrowingListTestsAPI(TestCase):
             author="Test Author1",
             cover="Hard",
             daily_fee=5.99,
+            inventory=2,
         )
 
         self.book2 = Book.objects.create(
@@ -195,7 +196,7 @@ class BorrowingListTestsAPI(TestCase):
             "book": self.book1.id,
             "borrow_date": "2022-02-26",
             "expected_return_date": "2022-03-05",
-            "actual_return_date": None
+            "actual_return_date": None,
         }
         response = self.client.post(
             self.url, data=json.dumps(data), content_type="application/json"
@@ -212,7 +213,7 @@ class BorrowingListTestsAPI(TestCase):
         data = {
             "book": self.book1.id,
             "borrow_date": "2023-02-26",
-            "actual_return_date": None
+            "actual_return_date": None,
         }
         response = self.client.post(
             self.url, data=json.dumps(data), content_type="application/json"
@@ -259,13 +260,13 @@ class BorrowingDetailTestAPI(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         borrowing = Borrowing.objects.get(pk=self.borrowing.pk)
-        data = ({
+        data = {
             "id": borrowing.id,
             "book": borrowing.book.id,
             "borrow_date": "2022-02-26",
             "expected_return_date": "2022-03-05",
-            "actual_return_date": None
-        })
+            "actual_return_date": None,
+        }
         self.assertEqual(response.data, data)
 
     def test_update_borrowing(self):
@@ -274,7 +275,7 @@ class BorrowingDetailTestAPI(TestCase):
             "book": self.book.pk,
             "borrow_date": "2022-02-27",
             "expected_return_date": "2022-03-05",
-            "actual_return_date": None
+            "actual_return_date": None,
         }
         response = self.client.put(
             self.url, data=json.dumps(data), content_type="application/json"
@@ -284,7 +285,9 @@ class BorrowingDetailTestAPI(TestCase):
         borrowing = Borrowing.objects.get(pk=self.borrowing.pk)
         self.assertEqual(borrowing.book_id, data["book"])
         self.assertEqual(str(borrowing.borrow_date), data["borrow_date"])
-        self.assertEqual(str(borrowing.expected_return_date), data["expected_return_date"])
+        self.assertEqual(
+            str(borrowing.expected_return_date), data["expected_return_date"]
+        )
         self.assertEqual(borrowing.actual_return_date, data["actual_return_date"])
 
     def test_delete_borrowing(self):

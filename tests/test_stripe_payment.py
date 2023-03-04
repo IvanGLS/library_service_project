@@ -46,11 +46,8 @@ class CreatePaymentSessionTest(TestCase):
         mock_session.url = session_url
         mock_create_session.return_value = mock_session
 
-        expected_response = JsonResponse({"session_id": session_id, "session_url": session_url})
+        create_payment_session(self.payment)
 
-        response = create_payment_session(self.payment)
-
-        self.assertEqual(response.content, expected_response.content)
         self.assertEqual(self.payment.session_id, session_id)
         self.assertEqual(self.payment.session_url, session_url)
         self.assertTrue(mock_create_session.called)

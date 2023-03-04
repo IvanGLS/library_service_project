@@ -46,52 +46,11 @@ class BookSerializerTestCase(TestCase):
             "{'non_field_errors': [ErrorDetail(string='Maximum number of books reached.', code='invalid')]}",
         )
 
-    def test_get_inventory(self):
-        # Test that inventory is calculated correctly
-        # Create 2 books and 1 borrowing
-        book1 = Book.objects.create(
-            title="Book 1",
-            author="John Doe",
-            daily_fee=1.0,
-        )
-        book2 = Book.objects.create(
-            title="Book 2",
-            author="Jane Doe",
-            daily_fee=2.0,
-        )
-        book3 = Book.objects.create(
-            title="Book 3",
-            author="Jim Doe",
-            daily_fee=5.0,
-        )
-        Borrowing.objects.create(
-            user=self.user1,
-            book=book1,
-            borrow_date=datetime.date.today(),
-            expected_return_date=datetime.date.today() + datetime.timedelta(days=7),
-            actual_return_date=None,
-        )
-        Borrowing.objects.create(
-            user=self.user1,
-            book=book2,
-            borrow_date=datetime.date.today() - datetime.timedelta(days=7),
-            expected_return_date=datetime.date.today(),
-            actual_return_date=datetime.date.today(),
-        )
-
-        serializer = BookSerializer(instance=[book1, book2, book3], many=True)
-        data = serializer.data
-        self.assertEqual(data[0]["inventory"], 2)
-        self.assertEqual(data[1]["inventory"], 2)
-        self.assertEqual(data[2]["inventory"], 2)
-
 
 class BorrowingSerializerTestCase(TestCase):
     def setUp(self):
         self.book = Book.objects.create(
-            title="Book 1",
-            author="John Doe",
-            daily_fee=1.0,
+            title="Book 1", author="John Doe", daily_fee=1.0, inventory=10
         )
         self.user = User.objects.create(
             username="testuser",

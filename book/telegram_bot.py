@@ -10,12 +10,17 @@ from book.models import Payment, Borrowing
 
 
 def send_telegram_message(message: str) -> dict:
-    url = (
-        f""
-        f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
-        f"sendMessage?chat_id={settings.TELEGRAM_CHAT_ID}&text={message}"
-    )
-    return requests.get(url).json()  # this sends the message
+    if settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID:
+        url = (
+            f""
+            f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
+            f"sendMessage?chat_id={settings.TELEGRAM_CHAT_ID}&text={message}"
+        )
+        return requests.get(url).json()  # this sends the message
+    else:
+        raise Exception(
+            "Telegram sender service is unavailable, please provide ur Telegram bot settings"
+        )
 
 
 def notify_borrowing_created(instance: Borrowing) -> dict:
