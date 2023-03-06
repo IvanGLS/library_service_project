@@ -29,7 +29,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'www.mywebsitesite.com']
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "redis://redis:6379"]
 
 
 # Application definition
