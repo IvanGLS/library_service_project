@@ -77,10 +77,6 @@ class BorrowingList(generics.ListCreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Decrement the book's inventory by 1
-        book.inventory -= 1
-        book.save()
-
         # Check if the user has any pending payments
         if Payment.objects.filter(
             borrowing__user=request.user, status=Payment.PENDING
@@ -91,6 +87,10 @@ class BorrowingList(generics.ListCreateAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Decrement the book's inventory by 1
+        book.inventory -= 1
+        book.save()
 
         # Create the borrowing instance
         return super().create(request, *args, **kwargs)
@@ -134,7 +134,7 @@ class BorrowingReturn(generics.GenericAPIView):
     payment_serializer_class = PaymentSerializer
 
     @transaction.atomic
-    def get(self, request, *args, **kwargs) -> Response:
+    def post(self, request, *args, **kwargs) -> Response:
         borrowing = self.get_object()
         if borrowing.actual_return_date is not None:
             return Response(
@@ -155,7 +155,6 @@ class BorrowingReturn(generics.GenericAPIView):
             else "PAYMENT",
             "money_to_pay": self.payment_count(),
         }
-        # create payment with session url and id
         serializer = PaymentSerializer(data=payment_data, partial=True)
         serializer.is_valid(raise_exception=True)
         payment = serializer.save()
