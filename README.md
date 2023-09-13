@@ -32,12 +32,6 @@ python manage.py runserver
 ```
 3. Access the API at http://localhost:8000.
 
-**Test data**
-```
-SECRET_KEY=r1@a@r8*#!uzz8zb*97cd(mxmg_ko#=%v@g+_6g0j9t8oiy00y
-TELEGRAM_BOT_TOKEN=5836978281:AAERmPqAES9jdAn08FX9cORwmSTrYb-wKvQ
-TELEGRAM_CHAT_ID=-847746096
-```
 
 ## API Endpoints
 
