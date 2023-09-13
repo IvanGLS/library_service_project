@@ -6,6 +6,7 @@ This is a RESTFUL API for a library service. It allows users to borrow and retur
 - Docker and Docker Compose
 - Postgres DB (or change settings for your DB)
 ## SetUp
+**Local**
 1. Clone this repository: git clone https://github.com/IvanGLS/library_service_project
 2. cd library_service_project
 3. Install virtual environment and requirements
@@ -18,6 +19,14 @@ pip install -r requirements.txt
 4. Create a .env file in the root directory of the project and add the required environment variables (see .env.example for reference).
    
 5. Access the API at http://localhost:8000.
+
+**Docker image**
+
+1. Run docker-compose up to start the development server and other required services.
+```
+2. docker-compose up --build
+```
+3. Access the API at http://localhost:8000.
 
 **Test data**
 ```
