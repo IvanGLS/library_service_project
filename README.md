@@ -7,7 +7,7 @@ This is a RESTFUL API for a library service. It allows users to borrow and retur
 - Postgres DB (or change settings for your DB)
 ## SetUp
 1. Clone this repository: git clone https://github.com/IvanGLS/library_service_project
-2. cd library_service
+2. cd library_service_project
 3. Install virtual environment and requirements
 ```
 python -m venv venv
@@ -16,11 +16,8 @@ source venv/bin/activate (on macOS)
 pip install -r requirements.txt
 ```
 4. Create a .env file in the root directory of the project and add the required environment variables (see .env.example for reference).
-5. Run docker-compose up to start the development server and other required services.
-```
-docker-compose up --build
-```
-6. Access the API at http://localhost:8000.
+   
+5. Access the API at http://localhost:8000.
 
 **Test data**
 ```
