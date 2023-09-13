@@ -26,11 +26,11 @@ python manage.py runserver
 
 **Docker image**
 
-1. Run docker-compose up to start the development server and other required services.
+1. Run docker to start the development server and other required services.
 ```
-2. docker-compose up --build
+docker-compose up --build
 ```
-3. Access the API at http://localhost:8000.
+2. Access the API at http://localhost:8000.
 
 
 ## API Endpoints
