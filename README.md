@@ -15,13 +15,14 @@ python -m venv venv
 venv\Scripts\activate (on Windows)
 source venv/bin/activate (on macOS)
 pip install -r requirements.txt
-python manage.py makemigrations
+```
+4. Create a .env file in the root directory of the project and add the required environment variables (see .env.example for reference).
+```
 python manage.py migrate
 python manage.py runserver
 ```
-4. Create a .env file in the root directory of the project and add the required environment variables (see .env.example for reference).
    
-5. Access the API at http://localhost:8000.
+6. Access the API at http://localhost:8000.
 
 **Docker image**
 
